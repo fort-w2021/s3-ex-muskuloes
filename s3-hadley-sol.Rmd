@@ -1,0 +1,87 @@
+---
+title: "Solution: s3-hadley-ex.Rmd"
+author: "Victor Tuekam"
+date: "16 January 2021"
+---
+
+1. The function `as.data.frame.data.frame()` implements the `data.frame()` method (for objects of the class `data.frame`) of the generic `as.data.frame`.
+   The naming convention for  `s3` methods is `generic.class()`. Here it is difficult to see where the generic part and the class part is, because of so many `.` dots.
+   A solution would be a different naming convention that clearly separates the class identifier from the generic. Perhaps `snake_case`.
+
+2.
+```{r, eval=FALSE}
+set.seed(1014)
+# generates 5 random dates after 24. Nov. 2019 up to the 4. Dec. 2020
+some_days <- as.Date("2019-11-24") + sample(10, 5)
+
+# calls mean.Date for date objects
+# s3_dispatch(mean(some_days))
+# => mean.Date
+#  * mean.default
+mean(some_days)
+# [1] "2019-11-30"
+
+# calls mean.default for the storage type of date( which probably calls mean.double)
+# typeof(unclass(some_days))
+# [1] "double"
+# s3_dispatch(mean(unclass(some_days)))
+#    mean.double
+#    mean.numeric
+# => mean.default
+mean(unclass(some_days))
+# [1] 18230.4
+```
+
+3.
+```{r, eval=FALSE}
+x <- ecdf(rpois(100, 10))
+x
+
+# class
+class(x)
+# [1] "ecdf"     "stepfun"  "function"
+
+# base type
+typeof(x)
+# [1] "closure"
+
+# attributes
+attributes(x)
+# $class
+# [1] "ecdf"     "stepfun"  "function"
+#
+# $call
+# ecdf(rpois(100, 10))
+#
+```
+
+The mathematical properties of distribution functions is implemented here using an interpolation function `approxfun`, this can be seen in the source definition of `ecdf`.
+
+4.
+```{r}
+new_data.frame <- function(data_frame, length, row.names = NULL) {
+  # uses a list as base type (str(unclass(mtcars)))
+  stopifnot(is.list(data_frame))
+
+  if (is.null(row.names)) {
+    row.names <- 1:length
+  } else {
+    stopifnot(is.character(row.names), length(row.names) == length)
+  }
+
+  structure(data_frame,
+    row.names = row.names,
+    class = "data.frame"
+  )
+}
+```
+
+5.
+
+- Scalar style: `lm()`, `ecdf()`
+- Vector style: `factor()`, `table()`, `as.Date()`, `as.POSIXct()`, `ordered()`
+
+6. A constructor of the `lm` class would assign the class $lm$ to objects with the necessary attributes of the `lm` class. `?lm` indicates that an `lm` object is a list containing at least the following components: `coefficients`, `residuals`, `fitted.values`, `rank`, `weights` and many more. Obviously the constructor would check the type of these components.
+
+7. `t.test()` is a generic because it calls `Use.Method("t.test")`.
+ The function `t()` is a generic that transposes a matrix. If this function is called on an object of type `test`, the method `t.default()` will be called as there is no method `t.test()` on objects of class `test` (since `t.test()` is a generic).
