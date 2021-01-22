@@ -1,53 +1,46 @@
 library("checkmate")
-new_bb <- function(text = character(),
-                   class_name = character()) {
-  
-  text_ul <- unlist(as.relistable(text))
 
+# bb constructor
+new_bb <- function(text = character()) {
   # replace ((leading consonants) (1-2 vowels) (trailing consonants)) with
   # ((leading consonants) (vowels) b (same vowels again) (trailing consonants)):
   match <- "([^aeiouäöüAEIOUÄÜÖ]*)([aeiouäöü]{1,2})([^aeiouäöü]*)"
   value <- gsub(
     pattern = match,
     replacement = "\\1\\2b\\2\\3",
-    x = text_ul
+    x = text
   )
-
-  if ("factor" %in% class(text)) {
-    ord <- match(text_ul, levels(text_ul))
-    levels <- levels(reorder(unique(value), ord))
-    attr(value, "skeleton") <- NULL
-    return(structure(
-      ord,
-      levels = levels,
-      class = c("bb", class_name)
-    ))
-  }
-
-  if ("list" %in% class(text)) {
-    value <- relist(value, attr(text_ul, "skeleton"))
-    value <- rapply(value, function(v) {
-      class(v) <- c("bb", class(v))
-      v
-    }, how = "replace")
-    return(structure(value, class = c("bb", class_name)))
-  }
-
-  attr(value, "skeleton") <- NULL
-  structure(value, class = c("bb", class_name))
+  structure(value, class=c("bb", class(text)))
 }
-
 # validator
 validate_bb <- function(text) {
+  checkmate::assert_class(object, "bb")
+  text
+}
+# generic bb method
+bb <- function(text, ...) {
+  UseMethod("bb")
+}
+# default bb method
+bb.default <- function(text) {
   checkmate::assert(
     checkmate::check_character(text),
     checkmate::check_list(text, types = c("character", "list")),
     checkmate::check_factor(text)
   )
 
+  validate_bb(new_bb(text))
+}
+# bb method for factors
+bb.factor <- function(text) {
+  levels(text) <- unclass(bb.default(levels(text)))
+  class(text) <- c("bb", class(text))
   text
 }
-# Helper
-bb <- function(text) {
-  validate_bb(new_bb(text, class_name = class(text)))
+# bb method for lists
+bb.list <- function(text) {
+  obj <- lapply(text, bb)
+  class(result) <- c("bb", class(obj))
+  obj
 }
+
